@@ -9,9 +9,15 @@
    (prompter:constructor (lambda (s)
                            (declare (ignore s))
                            (containers:container->list (slot-value *nyxtmuch* 'search-history))))
-   (prompter:filter (lambda (input suggestion)
-                      (prompter:submatches input suggestion)))
-   (prompter:must-match-p nil)))
+   ;;TODO still doesn't select the history item if current input matches
+   (prompter:filter-preprocessor (lambda (suggestions source input)
+                                   (declare (ignore suggestions))
+                                   (append
+                                    (list (funcall (prompter:suggestion-maker source) input
+                                                   source input))
+                                    (containers:container->list (slot-value *nyxtmuch* 'search-history)))))
+   (prompter:filter (lambda (suggestion source input)
+                      (prompter:submatches suggestion source input)))))
 
 (define-class nyxtmuch-config ()
   ((notmuch-args nil
