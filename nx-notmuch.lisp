@@ -95,7 +95,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
       mime))
 
 (defun nyxtmuch--fetch-message-body (mail-file)
-  (with-open-file (msg mail-file :direction :input)
+  (with-open-file (msg (uiop:ensure-pathname mail-file) :direction :input)
     (let* ((mime (cl-mime:parse-mime msg))
            (pref-mime (nyxtmuch--select-message-body mime)))
       (ecase (cl-mime:content-transfer-encoding pref-mime)
