@@ -87,27 +87,61 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
                  "#f2f2f2")))
     (cons fc (rgb:xmlify-rgb bc))))
 
-(defun nyxtmuch--select-message-body (mime)
-  "prefer html over plaintext, if multipart"
-  (if (equal (cl-mime:content-type mime) "multipart")
-      (car
-       (remove-if-not
-        #'(lambda (m)
-            (string-equal
-             (str:concat
-              (cl-mime:content-type m) "/" (cl-mime:content-subtype m))
-             "text/html"))
-        (cl-mime:content mime)))
-      mime))
+(defun nyxtmuch--format-message-body-part (mime-part)
+  "Recursively format"
+  (flet ((mime->string (m)
+           (str:concat
+            (cl-mime:content-type m) "/" (cl-mime:content-subtype m)))
+         (part-fetcher (m)
+           (ecase (cl-mime:content-transfer-encoding m)
+             ((:8bit :7bit) (cl-mime:content m))
+             (:base64
+              (flexi-streams:octets-to-string (cl-mime:decode-content m)))
+             (:quoted-printable
+              (flexi-streams:octets-to-string (cl-mime:decode-content m))))))
+    (if (not (typep mime-part 'cl-mime:mime))
+        (markup:markup (:blockquote :style "background-color:red" "MIME TYPE ERROR"))
 
-(defun nyxtmuch--fetch-message-body (mail-file)
+        (let ((part-type (mime->string mime-part)))
+          (cond
+            ((string-equal part-type "text/plain")
+             (markup:markup
+              (:div :style "white-space:pre" (part-fetcher mime-part))))
+
+            ((string-equal part-type "text/html")
+             (markup:raw (part-fetcher mime-part)))
+
+            ((or (string-equal part-type "multipart/signed")
+                 (string-equal part-type "multipart/mixed"))
+             (markup:markup
+              (:div :class "multipart"
+                    (loop for part in (cl-mime:content mime-part)
+                          collect
+                          (nyxtmuch--format-message-body-part part)))))
+
+            ((string-equal part-type "multipart/alternative")
+             (flet ((part-preferrer (alts)
+                      (or (find-if (serapeum:equals "text/html")
+                                   alts
+                                   :key #'mime->string)
+                          (find-if (serapeum:equals "text/plain")
+                                   (cl-mime:content alts)
+                                   :key #'mime->string))))
+               (markup:markup
+                (:div :class "alt"
+                      (nyxtmuch--format-message-body-part
+                       (part-preferrer (cl-mime:content mime-part)))))))
+
+            (t (markup:markup
+                (:blockquote :style "background-color:yellow"
+                             (str:concat "UNKNOWN MIME TYPE " part-type)))))))))
+
+(defun nyxtmuch--format-message-body (mail-file)
   (with-open-file (msg (uiop:ensure-pathname mail-file) :direction :input)
-    (let* ((mime (cl-mime:parse-mime msg))
-           (pref-mime (nyxtmuch--select-message-body mime)))
-      (ecase (cl-mime:content-transfer-encoding pref-mime)
-        ((:8bit :7bit) (cl-mime:content pref-mime))
-        (:quoted-printable
-         (flexi-streams:octets-to-string (cl-mime:decode-content pref-mime)))))))
+    (let ((mime (cl-mime:parse-mime msg)))
+      (markup:markup
+       (:div (markup:raw
+              (nyxtmuch--format-message-body-part mime)))))))
 
 (defun nyxtmuch--notmuch-search (search-string notmuch-args)
   (uiop:run-program
@@ -162,24 +196,8 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
     (markup:raw (nyxtmuch--format-tags (getf thread :tags)))
     (:span :class "subject" (getf thread :subject)))))
 
-;; (defun nyxtmuch--format-body (message-body)
-;;   (let* ((content (getf (car message-body) :content))
-;;          (html
-;;            (car (remove-if-not
-;;                  #'(lambda (x) (equal (getf x :content-type) "text/html"))
-;;                  content)))
-;;          (plain
-;;            (unless html
-;;              (car (remove-if-not
-;;                  #'(lambda (x) (equal (getf x :content-type) "text/plain"))
-;;                  content)))))
-
-;;      (if plain
-;;          (markup:markup (:p (getf plain :content)))
-;;          (markup:markup (:div (markup:raw (getf html :content)))))))
-
 (defun nyxtmuch--format-message (message-ht)
-  (let* (headers-ht body from to date subject tags)
+  (let (headers-ht formatted-body from to date subject tags)
     (handler-case
         (progn
           (setq headers-ht (gethash "headers" message-ht))
@@ -194,7 +212,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
         (unless to (setq to "ERROR"))
         (unless date (setq date (gethash "date_relative" message-ht)))
         (unless (str:non-empty-string-p subject) (setq subject "ERROR"))))
-    (setq body (nyxtmuch--fetch-message-body (car (gethash "filename" message-ht))))
+    (setq formatted-body (nyxtmuch--format-message-body (car (gethash "filename" message-ht))))
     (markup:markup
      (:div
       (:ul :class "headers"
@@ -204,8 +222,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
            (:li (:span :class "header-label" "Subject:") (:span subject))
            (:li (:span :class "header-label" "Tags:") (markup:raw (nyxtmuch--format-tags tags))))
       (:hr)
-      (:div :class "messagebody" (markup:raw body))
-      ))))
+      (:div :class "messagebody" (markup:raw formatted-body))))))
 
 (defun nyxtmuch--thread-id (thread)
   (getf thread :thread))
