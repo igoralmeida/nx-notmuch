@@ -111,27 +111,6 @@
        (:div (markup:raw
               (nyxtmuch--format-message-body-part mime)))))))
 
-(defun nyxtmuch--notmuch-search (search-string notmuch-args)
-  (uiop:run-program
-   `("notmuch"
-     ,@notmuch-args
-     "search"
-     "--format=sexp"
-     "--limit=300" ;;TODO remove this and use some other facility to prevent huge searches
-     ,search-string)
-   :force-shell t
-   :output :form))
-
-(defun nyxtmuch--notmuch-show-single-thread (tid notmuch-args)
-  (uiop:run-program
-   `("notmuch"
-     ,@notmuch-args
-     "show"
-     "--format=json"
-     "--body=false"
-     ,(str:concat "thread:\"" tid "\""))
-   :output #'(lambda (s) (car (yason:parse s)))))
-
 (defun nyxtmuch--format-tag (tag)
   (markup:markup
    (:span
@@ -298,7 +277,7 @@
          (:p search-string)
          (:hr))
         (nyxtmuch-show-search-results
-         (nyxtmuch--notmuch-search
+         (notmuch-search
           search-string
           (slot-value *nyxtmuch* 'notmuch-args))))))))
 
@@ -337,7 +316,7 @@
         (:p (str:concat "thread:" tid))
         (:hr))
        (nyxtmuch-show-thread
-        (nyxtmuch--notmuch-show-single-thread
+        (notmuch-show-single-thread
          tid
          (slot-value *nyxtmuch* 'notmuch-args)))))))
 
