@@ -8,4 +8,5 @@
                :parenscript
                "md5" "simple-rgb" "cl-mime" "yason")
   :components ((:file "package")
+               (:file "utils")
                (:file "nx-notmuch")))
