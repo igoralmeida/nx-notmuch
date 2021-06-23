@@ -279,7 +279,6 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
 
 (nyxt::define-class nyxtmuch-search-buffer (user-internal-buffer)
   ((search-string "" :type string :documentation "Notmuch search string.")
-   (default-modes '(nyxtmuch-search-mode vi-normal-mode web-mode base-mode))
    (style #.(cl-css:css
              '(("li.thread:hover"
                 :background-color "#eee")
@@ -310,6 +309,9 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
   (:export-accessor-names-p t)
   (:export-predicate-name-p t)
   (:accessor-name-transformer (hu.dwim.defclass-star:make-name-transformer name)))
+
+(defmethod default-modes append ((buffer nyxtmuch-search-buffer))
+  '(nyxtmuch-search-mode))
 
 (nyxt:define-command nyxt::nyxtmuch-render-search (&optional buffer)
   "Build the nyxtmuch search associated with this buffer"
