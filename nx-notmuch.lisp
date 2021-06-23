@@ -199,32 +199,38 @@
                "")
            )))))
 
-(defvar nyxtmuch--thread-css
-  (cl-css:css
-   '(("body"
-      :background-color "#eee")
-     ("li.message"
-      :background-color "white"
-      :width "90%")
-     ("ul.headers"
-      :list-style-type "none"
-      :margin 0
-      :padding "10px")
-     ("span.header-label"
-      :color "gray"
-      :font-size "75%"
-      :margin "2px")
-     ("blockquote"
-      :border-left "3px solid blue"
-      :padding "0.5em 3px")
-     ("div.tags"
-      :margin "2px"
-      :display "inline-block")
-     ("span.tag"
-      :margin "2px"
-      :padding "2px 0.1em")
-     ))
-  "The CSS definitions for the thread buffer")
+(define-class show-buffer (user-internal-buffer)
+  ((thread-id "" :type string :documentation "Notmuch thread id.")
+   (style #.(cl-css:css
+             '(("body"
+                :background-color "#eee")
+               ("li.message"
+                :background-color "white"
+                :width "90%")
+               ("ul.headers"
+                :list-style-type "none"
+                :margin 0
+                :padding "10px")
+               ("span.header-label"
+                :color "gray"
+                :font-size "75%"
+                :margin "2px")
+               ("blockquote"
+                :border-left "3px solid blue"
+                :padding "0.5em 3px")
+               ("div.tags"
+                :margin "2px"
+                :display "inline-block")
+               ("span.tag"
+                :margin "2px"
+                :padding "2px 0.1em")))))
+  (:export-class-name-p t)
+  (:export-accessor-names-p t)
+  (:export-predicate-name-p t)
+  (:accessor-name-transformer (hu.dwim.defclass-star:make-name-transformer name)))
+
+(defmethod default-modes append ((buffer show-buffer))
+  '(nyxtmuch-show-mode))
 
 (define-class search-buffer (user-internal-buffer)
   ((search-string "" :type string :documentation "Notmuch search string.")
@@ -306,19 +312,25 @@
 
 (define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch"
-  (let ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">")))
-    (with-current-html-buffer (buffer buffer-name 'nyxtmuch-show-mode)
-      (str:concat
-       (markup:markup
-        (:style (style buffer))
-        (:style nyxtmuch--thread-css)
-        (:h1 "Nyxtmuch")
-        (:p (str:concat "thread:" tid))
-        (:hr))
-       (nyxtmuch-show-thread
-        (notmuch-show-single-thread
-         tid
-         (slot-value *nyxtmuch* 'notmuch-args)))))))
+  (let ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">"))
+        (thebuf (nyxt::buffer-make *browser*
+                                   :title buffer-name
+                                   :buffer-class 'show-buffer)))
+    (setf (slot-value thebuf 'thread-id) tid)
+    (with-current-buffer thebuf
+      (nyxt::html-set
+       (str:concat
+        (markup:markup
+         (:style (slot-value (nyxt::make-dummy-buffer) 'style))
+         (:style (style thebuf))
+         (:h1 "Nyxtmuch")
+         (:p (str:concat "thread:" tid))
+         (:hr))
+        (nyxtmuch-show-thread
+         (notmuch-show-single-thread
+          tid
+          (slot-value *nyxtmuch* 'notmuch-args))))))
+    (set-current-buffer thebuf)))
 
 ;; (define-parenscript %collapse-message (message-element)
 ;;   (defun qs (context selector)
