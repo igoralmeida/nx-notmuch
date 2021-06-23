@@ -4,7 +4,7 @@
 (defvar *nyxtmuch* nil
   "Global nyxtmuch config")
 
-(define-class nyxtmuch-search-source (prompter:source)
+(define-class search-source (prompter:source)
   ((prompter:name "Nyxtmuch search history")
    (prompter:constructor (lambda (s)
                            (declare (ignore s))
@@ -19,7 +19,7 @@
    (prompter:filter (lambda (suggestion source input)
                       (prompter:submatches suggestion source input)))))
 
-(define-class nyxtmuch-config ()
+(define-class config ()
   ((notmuch-args nil
                  :type list
                  :documentation "List of strings, args that are passed to
@@ -33,7 +33,7 @@
 
 (setf *nyxtmuch*
       (make-instance
-       'nyxtmuch-config
+       'config
        :notmuch-args (list (str:concat
                             "--config="
                             (uiop:native-namestring "~/.notmuch-config")))))
@@ -277,7 +277,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
      ))
   "The CSS definitions for the thread buffer")
 
-(define-class nyxtmuch-search-buffer (user-internal-buffer)
+(define-class search-buffer (user-internal-buffer)
   ((search-string "" :type string :documentation "Notmuch search string.")
    (style #.(cl-css:css
              '(("li.thread:hover"
@@ -310,7 +310,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
   (:export-predicate-name-p t)
   (:accessor-name-transformer (hu.dwim.defclass-star:make-name-transformer name)))
 
-(defmethod default-modes append ((buffer nyxtmuch-search-buffer))
+(defmethod default-modes append ((buffer search-buffer))
   '(nyxtmuch-search-mode))
 
 (define-command-global nyxtmuch-render-search (&optional buffer)
@@ -339,17 +339,21 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
            (nyxt:prompt
             :prompt "Notmuch search:"
             :history search-hist
-            :sources 'nyxtmuch-search-source))
+            :sources 'search-source))
          (search-term (if (listp search-result)
                           (first search-result)
                           search-result))
-         (buffer-name (str:concat "*Nyxtmuch search*<" search-term ">"))
-         (thebuf (nyxt::buffer-make *browser*
-                 :title buffer-name
-                 :buffer-class 'nyxtmuch-search-buffer)))
-    (setf (slot-value thebuf 'search-string) search-term)
-    (nyxtmuch-render-search thebuf)
-    (set-current-buffer thebuf)))
+         buffer-name thebuf)
+    (if (str:emptyp search-term)
+        (echo "Notmuch search cannot be empty.")
+        (progn
+          (setf buffer-name (str:concat "*Nyxtmuch search*<" search-term ">"))
+          (setf thebuf (nyxt::buffer-make *browser*
+                                          :title buffer-name
+                                          :buffer-class 'search-buffer))
+          (setf (slot-value thebuf 'search-string) search-term)
+          (nyxtmuch-render-search thebuf)
+          (set-current-buffer thebuf)))))
 
 (define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch"
