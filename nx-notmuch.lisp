@@ -4,7 +4,7 @@
 (defvar *nyxtmuch* nil
   "Global nyxtmuch config")
 
-(nyxt::define-class nyxtmuch-search-source (prompter:source)
+(define-class nyxtmuch-search-source (prompter:source)
   ((prompter:name "Nyxtmuch search history")
    (prompter:constructor (lambda (s)
                            (declare (ignore s))
@@ -19,7 +19,7 @@
    (prompter:filter (lambda (suggestion source input)
                       (prompter:submatches suggestion source input)))))
 
-(nyxt::define-class nyxtmuch-config ()
+(define-class nyxtmuch-config ()
   ((notmuch-args nil
                  :type list
                  :documentation "List of strings, args that are passed to
@@ -38,21 +38,21 @@
                             "--config="
                             (uiop:native-namestring "~/.notmuch-config")))))
 
-(nyxt:define-mode nyxtmuch-show-mode ()
+(define-mode nyxtmuch-show-mode ()
   "mode for nyxtmuch threads"
   ((keymap-scheme
-    (nyxt::define-scheme "nm-show"
+    (define-scheme "nm-show"
       scheme:vi-normal
       (list
        "c" 'nyxtmuch-collapse-message)))))
 
-(nyxt:define-mode nyxtmuch-search-mode ()
+(define-mode nyxtmuch-search-mode ()
   "mode for nyxtmuch searches"
   ((keymap-scheme
-    (nyxt::define-scheme "nm-search"
+    (define-scheme "nm-search"
       scheme:vi-normal
       (list
-       "r" 'nyxt::nyxtmuch-render-search)))))
+       "r" 'nyxtmuch-render-search)))))
 
 (defun nyxtmuch--get-tag-color (tag-name canvas-color)
   "Calculates a tag color for a given TAG-NAME
@@ -226,7 +226,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
   (getf thread :thread))
 
 (defun nyxtmuch--make-thread-href (thread)
-  (lisp-url `(nyxt::nyxtmuch-show ,(nyxtmuch--thread-id thread))))
+  (lisp-url `(nyxtmuch-show ,(nyxtmuch--thread-id thread))))
 
 (defun nyxtmuch-show-search-results (threads)
   (markup:markup
@@ -277,7 +277,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
      ))
   "The CSS definitions for the thread buffer")
 
-(nyxt::define-class nyxtmuch-search-buffer (user-internal-buffer)
+(define-class nyxtmuch-search-buffer (user-internal-buffer)
   ((search-string "" :type string :documentation "Notmuch search string.")
    (style #.(cl-css:css
              '(("li.thread:hover"
@@ -313,7 +313,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
 (defmethod default-modes append ((buffer nyxtmuch-search-buffer))
   '(nyxtmuch-search-mode))
 
-(nyxt:define-command nyxt::nyxtmuch-render-search (&optional buffer)
+(define-command-global nyxtmuch-render-search (&optional buffer)
   "Build the nyxtmuch search associated with this buffer"
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
@@ -332,7 +332,7 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
           search-string
           (slot-value *nyxtmuch* 'notmuch-args))))))))
 
-(nyxt:define-command nyxt::nyxtmuch-search ()
+(define-command-global nyxtmuch-search ()
   "Open nyxtmuch with some search"
   (let* ((search-hist (slot-value *nyxtmuch* 'search-history))
          (search-result
@@ -348,10 +348,10 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
                  :title buffer-name
                  :buffer-class 'nyxtmuch-search-buffer)))
     (setf (slot-value thebuf 'search-string) search-term)
-    (nyxt::nyxtmuch-render-search thebuf)
+    (nyxtmuch-render-search thebuf)
     (set-current-buffer thebuf)))
 
-(nyxt:define-command nyxt::nyxtmuch-show (tid)
+(define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch"
   (let ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">")))
     (with-current-html-buffer (buffer buffer-name 'nyxtmuch-show-mode)
