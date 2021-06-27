@@ -44,7 +44,8 @@
     (define-scheme "nm-show"
       scheme:vi-normal
       (list
-       "c" 'nyxtmuch-collapse-message)))))
+       "c" 'nyxtmuch-collapse-message
+       "r" 'nyxtmuch-render-thread)))))
 
 (define-mode nyxtmuch-search-mode ()
   "mode for nyxtmuch searches"
@@ -310,26 +311,33 @@
           (nyxtmuch-render-search thebuf)
           (set-current-buffer thebuf)))))
 
-(define-command-global nyxtmuch-show (tid)
-  "Show a thread in nyxtmuch"
-  (let ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">"))
-        (thebuf (nyxt::buffer-make *browser*
-                                   :title buffer-name
-                                   :buffer-class 'show-buffer)))
-    (setf (slot-value thebuf 'thread-id) tid)
-    (with-current-buffer thebuf
+(define-command-global nyxtmuch-render-thread (&optional buffer)
+  "Build the nyxtmuch thread view associated with this buffer"
+  (let* ((buffer (or buffer (current-buffer)))
+         (style (style buffer))
+         (thread-id (thread-id buffer)))
+    (with-current-buffer buffer
       (nyxt::html-set
        (str:concat
         (markup:markup
          (:style (slot-value (nyxt::make-dummy-buffer) 'style))
-         (:style (style thebuf))
+         (:style style)
          (:h1 "Nyxtmuch")
-         (:p (str:concat "thread:" tid))
+         (:p (str:concat "thread:" thread-id))
          (:hr))
         (nyxtmuch-show-thread
          (notmuch-show-single-thread
-          tid
-          (slot-value *nyxtmuch* 'notmuch-args))))))
+          thread-id
+          (slot-value *nyxtmuch* 'notmuch-args))))))))
+
+(define-command-global nyxtmuch-show (tid)
+  "Show a thread in nyxtmuch"
+  (let* ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">"))
+         (thebuf (nyxt::buffer-make *browser*
+                                    :title buffer-name
+                                    :buffer-class 'show-buffer)))
+    (setf (slot-value thebuf 'thread-id) tid)
+    (nyxtmuch-render-thread thebuf)
     (set-current-buffer thebuf)))
 
 ;; (define-parenscript %collapse-message (message-element)
