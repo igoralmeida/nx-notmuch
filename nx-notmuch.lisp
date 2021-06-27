@@ -112,38 +112,6 @@
        (:div (markup:raw
               (nyxtmuch--format-message-body-part mime)))))))
 
-(defun nyxtmuch--format-tag (tag)
-  (markup:markup
-   (:span
-    :class "tag"
-    :style (let* ((c (get-tag-color tag "#ffffff"))
-                 (fc (car c))
-                 (bc (cdr c)))
-             (str:concat
-              "background-color:" bc "; "
-              "foreground-color:" fc))
-    tag)))
-
-(defun nyxtmuch--format-tags (tags)
-  (markup:markup
-   (:div :class "tags"
-         (loop for tag in tags
-                 collect
-                 (nyxtmuch--format-tag tag)))))
-
-(defun nyxtmuch--thread-has-unread-p (thread)
-  (member "unread" (getf thread :tags) :test #'equal))
-
-(defun nyxtmuch--format-thread (thread)
-  (markup:markup
-   (:div
-    :style (when (nyxtmuch--thread-has-unread-p thread)
-             "font-weight:bold")
-    (:span :class "date" (getf thread :date_relative))
-    (:span :class "authors" (getf thread :authors))
-    (markup:raw (nyxtmuch--format-tags (getf thread :tags)))
-    (:span :class "subject" (getf thread :subject)))))
-
 (defun nyxtmuch--format-message (message-ht)
   (let (headers-ht formatted-body from to date subject tags)
     (handler-case
@@ -168,26 +136,12 @@
            (:li (:span :class "header-label" "To:") (:span to))
            (:li (:span :class "header-label" "Date:") (:span date))
            (:li (:span :class "header-label" "Subject:") (:span subject))
-           (:li (:span :class "header-label" "Tags:") (markup:raw (nyxtmuch--format-tags tags))))
+           (:li (:span :class "header-label" "Tags:") (markup:raw (format-tags tags))))
       (:hr)
       (:div :class "messagebody" (markup:raw formatted-body))))))
 
-(defun nyxtmuch--thread-id (thread)
-  (getf thread :thread))
-
-(defun nyxtmuch--make-thread-href (thread)
-  (lisp-url `(nyxtmuch-show ,(nyxtmuch--thread-id thread))))
-
-(defun nyxtmuch-show-search-results (threads)
-  (markup:markup
-   (:ul
-    (loop for thread in threads
-          collect
-          (markup:markup
-           (:a :class "threadli" :href (nyxtmuch--make-thread-href thread)
-               (:li :class "thread" (markup:raw (nyxtmuch--format-thread thread)))))))))
-
-(defun nyxtmuch-show-thread (messages)
+(defun format-thread (messages)
+  "Recursively format the thread represented by MESSAGES, as nested lists."
   (markup:markup
    (:ul
     (loop for (parent children) in messages
@@ -195,10 +149,8 @@
           (str:concat
            (markup:markup
             (:li :class "message" (markup:raw (nyxtmuch--format-message parent))))
-           (if children
-               (markup:markup (:div (markup:raw (nyxtmuch-show-thread children))))
-               "")
-           )))))
+           (when children
+             (markup:markup (:div (markup:raw (format-thread children))))))))))
 
 (define-class show-buffer (user-internal-buffer)
   ((thread-id "" :type string :documentation "Notmuch thread id.")
@@ -283,7 +235,7 @@
          (:h1 "Nyxtmuch")
          (:p search-string)
          (:hr))
-        (nyxtmuch-show-search-results
+        (format-search-results
          (notmuch-search
           search-string
           (slot-value *nyxtmuch* 'notmuch-args))))))))
@@ -325,7 +277,7 @@
          (:h1 "Nyxtmuch")
          (:p (str:concat "thread:" thread-id))
          (:hr))
-        (nyxtmuch-show-thread
+        (format-thread
          (notmuch-show-single-thread
           thread-id
           (slot-value *nyxtmuch* 'notmuch-args))))))))
