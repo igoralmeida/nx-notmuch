@@ -58,54 +58,39 @@
 
 (defun nyxtmuch--format-message-body-part (mime-part)
   "Recursively format"
-  (flet ((mime->string (m)
-           (str:concat
-            (cl-mime:content-type m) "/" (cl-mime:content-subtype m)))
-         (part-fetcher (m)
-           (ecase (cl-mime:content-transfer-encoding m)
-             ((:8bit :7bit) (cl-mime:content m))
-             (:base64
-              (flexi-streams:octets-to-string (cl-mime:decode-content m)))
-             (:quoted-printable
-              (flexi-streams:octets-to-string (cl-mime:decode-content m))))))
-    (if (not (typep mime-part 'cl-mime:mime))
-        (markup:markup (:blockquote :style "background-color:red" "MIME TYPE ERROR"))
+  (if (not (typep mime-part 'cl-mime:mime))
+      (markup:markup (:blockquote :style "background-color:red" "MIME TYPE ERROR"))
 
-        (let ((part-type (mime->string mime-part)))
-          (cond
-            ((string-equal part-type "text/plain")
-             (markup:markup
-              (:div :style "white-space:pre" (part-fetcher mime-part))))
+      (let ((part-type (full-mime-type mime-part)))
+        (cond
+          ((string-equal part-type "text/plain")
+           (markup:markup
+            (:div :style "white-space:pre" (get-mime-content mime-part))))
 
-            ((string-equal part-type "text/html")
-             (markup:raw (part-fetcher mime-part)))
+          ((string-equal part-type "text/html")
+           (markup:raw (get-mime-content mime-part)))
 
-            ((or (string-equal part-type "multipart/signed")
-                 (string-equal part-type "multipart/mixed"))
-             (markup:markup
-              (:div :class "multipart"
-                    (loop for part in (cl-mime:content mime-part)
-                          collect
-                          (nyxtmuch--format-message-body-part part)))))
+          ((or (string-equal part-type "multipart/signed")
+               (string-equal part-type "multipart/mixed"))
+           (markup:markup
+            (:div :class "multipart"
+                  (loop for part in (cl-mime:content mime-part)
+                        collect
+                        (nyxtmuch--format-message-body-part part)))))
 
-            ((string-equal part-type "multipart/alternative")
-             (flet ((part-preferrer (alts)
-                      (or (find-if (serapeum:equals "text/html")
-                                   alts
-                                   :key #'mime->string)
-                          (find-if (serapeum:equals "text/plain")
-                                   (cl-mime:content alts)
-                                   :key #'mime->string))))
-               (markup:markup
-                (:div :class "alt"
-                      (nyxtmuch--format-message-body-part
-                       (part-preferrer (cl-mime:content mime-part)))))))
+          ((string-equal part-type "multipart/alternative")
+           (markup:markup
+            (:div :class "alt"
+                  (nyxtmuch--format-message-body-part
+                   (select-mime-alternative (cl-mime:content mime-part))))))
 
-            (t (markup:markup
-                (:blockquote :style "background-color:yellow"
-                             (str:concat "UNKNOWN MIME TYPE " part-type)))))))))
+          (t (markup:markup
+              (:blockquote :style "background-color:yellow"
+                           (str:concat "UNKNOWN MIME TYPE " part-type))))))))
 
 (defun nyxtmuch--format-message-body (mail-file)
+  ;TODO Looks nice, but I don't like that we keep the file open while building
+  ;the markup
   (with-open-file (msg (uiop:ensure-pathname mail-file) :direction :input)
     (let ((mime (cl-mime:parse-mime msg)))
       (markup:markup
