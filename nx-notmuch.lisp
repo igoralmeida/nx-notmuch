@@ -126,7 +126,7 @@
 (defmethod default-modes append ((buffer search-buffer))
   '(nyxtmuch-search-mode))
 
-(define-command-global nyxtmuch-render-search (&optional buffer)
+(define-command nyxtmuch-render-search (&optional buffer)
   "Build the nyxtmuch search associated with this buffer"
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
@@ -168,7 +168,7 @@
           (nyxtmuch-render-search thebuf)
           (set-current-buffer thebuf)))))
 
-(define-command-global nyxtmuch-render-thread (&optional buffer)
+(define-command nyxtmuch-render-thread (&optional buffer)
   "Build the nyxtmuch thread view associated with this buffer"
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
