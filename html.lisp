@@ -80,10 +80,10 @@ Hard-coded to use the first file provided by notmuch."
       (t (c)
         (echo-warning "Got a condition: ~a~%" c)
 
-        (unless from (setq from "ERROR"))
-        (unless to (setq to "ERROR"))
-        (unless date (setq date (gethash "date_relative" message-ht)))
-        (unless (str:non-empty-string-p subject) (setq subject "ERROR"))))
+        (unless from (setf from "ERROR"))
+        (unless to (setf to "ERROR"))
+        (unless date (setf date (gethash "date_relative" message-ht)))
+        (unless (str:non-empty-string-p subject) (setf subject "ERROR"))))
     (setf formatted-body (format-message-body (first (gethash "filename" message-ht))))
     (markup:markup
      (:div
