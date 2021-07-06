@@ -1,6 +1,9 @@
 (in-package :nx-notmuch)
 
 (defun notmuch-search (search-string notmuch-args)
+  "Run notmuch search with SEARCH-STRING.
+
+Hard-coded limit of 300 results."
   (uiop:run-program
    `("notmuch"
      ,@notmuch-args
@@ -12,6 +15,7 @@
    :output :form))
 
 (defun notmuch-show-single-thread (tid notmuch-args)
+  "Run `notmuch show thread:TID' to retrieve that thread."
   (uiop:run-program
    `("notmuch"
      ,@notmuch-args

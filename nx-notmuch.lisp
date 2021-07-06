@@ -127,7 +127,7 @@
   '(nyxtmuch-search-mode))
 
 (define-command nyxtmuch-render-search (&optional buffer)
-  "Build the nyxtmuch search associated with this buffer"
+  "Build the nyxtmuch search associated with this buffer."
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
          (search-string (search-string buffer)))
@@ -146,7 +146,7 @@
           (slot-value *nyxtmuch* 'notmuch-args))))))))
 
 (define-command-global nyxtmuch-search ()
-  "Open nyxtmuch with some search"
+  "Open nyxtmuch with some search."
   (let* ((search-hist (slot-value *nyxtmuch* 'search-history))
          (search-result
            (nyxt:prompt
@@ -169,7 +169,7 @@
           (set-current-buffer thebuf)))))
 
 (define-command nyxtmuch-render-thread (&optional buffer)
-  "Build the nyxtmuch thread view associated with this buffer"
+  "Build the nyxtmuch thread view associated with this buffer."
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
          (thread-id (thread-id buffer)))
@@ -188,7 +188,7 @@
           (slot-value *nyxtmuch* 'notmuch-args))))))))
 
 (define-command-global nyxtmuch-show (tid)
-  "Show a thread in nyxtmuch"
+  "Show a thread in nyxtmuch."
   (let* ((buffer-name (str:concat "*Nyxtmuch show*<thread:" tid ">"))
          (thebuf (nyxt::buffer-make *browser*
                                     :title buffer-name

@@ -1,7 +1,8 @@
 (in-package :nx-notmuch)
 
 (defun get-tag-color (tag-name canvas-color)
-  "Calculates a tag color for a given TAG-NAME
+  "Calculates a tag color for a given TAG-NAME and background CANVAS-COLOR,
+returned as (FGCOLOR . BGCOLOR).
 
 This is a port of astroid's Utils::get_tag_color_rgba(). "
   (let* ((upper "#e5e5e5")
