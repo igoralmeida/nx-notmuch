@@ -23,4 +23,4 @@ Hard-coded limit of 300 results."
      "--format=json"
      "--body=false"
      ,(str:concat "thread:\"" tid "\""))
-   :output #'(lambda (s) (car (yason:parse s)))))
+   :output #'(lambda (s) (first (yason:parse s)))))

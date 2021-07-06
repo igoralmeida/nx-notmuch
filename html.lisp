@@ -15,12 +15,11 @@
   (markup:markup
    (:span
     :class "tag"
-    :style (let* ((c (get-tag-color tag "#ffffff"))
-                  (fc (car c))
-                  (bc (cdr c)))
-             (str:concat
-              "background-color:" bc "; "
-              "foreground-color:" fc))
+    :style (let* ((colors (get-tag-color tag "#ffffff"))
+                  (fgcolor (car colors))
+                  (bgcolor (cdr colors)))
+             (cl-css:inline-css
+              `(:foreground-color ,fgcolor :background-color ,bgcolor)))
     tag)))
 
 ;;;  search
@@ -66,23 +65,26 @@ anywhere."
              (markup:markup (:div (markup:raw (format-thread children))))))))))
 
 (defun format-message (message-ht)
-  "Stylize MESSAGE-HT, including its body."
+  "Stylize MESSAGE-HT, including its body.
+
+Hard-coded to use the first file provided by notmuch."
   (let (headers-ht formatted-body from to date subject tags)
     (handler-case
         (progn
-          (setq headers-ht (gethash "headers" message-ht))
-          (setq tags (gethash "tags" message-ht))
-          (setq subject (gethash "Subject" headers-ht))
-          (setq from (gethash "From" headers-ht))
-          (setq to (gethash "To" headers-ht))
-          (setq date (gethash "Date" headers-ht)))
+          (setf headers-ht (gethash "headers" message-ht)
+                tags (gethash "tags" message-ht))
+          (setf subject (gethash "Subject" headers-ht)
+                from (gethash "From" headers-ht)
+                to (gethash "To" headers-ht)
+                date (gethash "Date" headers-ht)))
       (t (c)
-        (format t "Got an exception: ~a~%" c)
+        (echo-warning "Got a condition: ~a~%" c)
+
         (unless from (setq from "ERROR"))
         (unless to (setq to "ERROR"))
         (unless date (setq date (gethash "date_relative" message-ht)))
         (unless (str:non-empty-string-p subject) (setq subject "ERROR"))))
-    (setq formatted-body (format-message-body (car (gethash "filename" message-ht))))
+    (setf formatted-body (format-message-body (first (gethash "filename" message-ht))))
     (markup:markup
      (:div
       (:ul :class "headers"
