@@ -12,4 +12,5 @@
                (:file "mime")
                (:file "html")
                (:file "notmuch-interface")
+               (:file "ui")
                (:file "nx-notmuch")))

@@ -45,6 +45,8 @@
       scheme:vi-normal
       (list
        "c" 'nyxtmuch-collapse-message
+       "C-j" 'nyxtmuch-focus-next-message
+       "C-k" 'nyxtmuch-focus-prev-message
        "r" 'nyxtmuch-render-thread)))))
 
 (define-mode nyxtmuch-search-mode ()
@@ -64,6 +66,11 @@
                ("li.message"
                 :background-color "white"
                 :width "90%")
+               ("li.message > div"
+                :padding-left "0.5em"
+                :border-left "2px solid white")
+               ("li.message.selected > div"
+                :border-left "2px solid blue")
                ("ul.headers"
                 :list-style-type "none"
                 :margin 0
@@ -178,16 +185,18 @@
     (with-current-buffer buffer
       (nyxt::html-set
        (str:concat
-        (markup:markup
-         (:style (slot-value (nyxt::make-dummy-buffer) 'style))
-         (:style style)
-         (:h1 "Nyxtmuch")
-         (:p (str:concat "thread:" thread-id))
-         (:hr))
+        (let ((markup:*auto-escape* nil))
+          (markup:markup
+           (:style (slot-value (nyxt::make-dummy-buffer) 'style))
+           (:style style)
+           (:h1 "Nyxtmuch")
+           (:p (str:concat "thread:" thread-id))
+           (:hr)))
         (format-thread
          (notmuch-show-single-thread
           thread-id
-          (slot-value *nyxtmuch* 'notmuch-args))))))))
+          (slot-value *nyxtmuch* 'notmuch-args)))))
+      (focus-change 'next))))
 
 (define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch."
