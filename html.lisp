@@ -38,17 +38,17 @@
   "Stylize THREAD as a search result."
   (markup:markup
    (:div
-    :style (when (thread-has-unread-p thread)
-             "font-weight:bold")
+    :class (str:concat "result"
+                       (when (has-unread-p (getf thread :tags))
+                         " unread"))
     (:span :class "date" (getf thread :date_relative))
     (:span :class "authors" (getf thread :authors))
     (markup:raw (format-tags (getf thread :tags)))
     (:span :class "subject" (getf thread :subject)))))
 
-(defun thread-has-unread-p (thread)
-  "True if THREAD (a plist, probably from `notmuch-search') has an `unread' tag
-anywhere."
-  (member "unread" (getf thread :tags) :test #'equal))
+(defun has-unread-p (tags)
+  "True if TAGS list has an `unread' tag."
+  (member "unread" tags :test #'equal))
 
 ;;;  show
 

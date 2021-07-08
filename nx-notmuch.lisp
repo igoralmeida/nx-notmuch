@@ -112,6 +112,8 @@
                ("span.subject"
                 :margin "2px"
                 :display "inline-block")
+               ("div.result.unread"
+                :font-weight "bold")
                ("div.tags"
                 :margin "2px"
                 :display "inline-block")
