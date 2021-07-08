@@ -109,7 +109,9 @@ Hard-coded to use the first file provided by notmuch."
            (:li (:span :class "header-label" "Subject:") (:span subject))
            (:li (:span :class "header-label" "Tags:") (markup:raw (format-tags tags))))
       (:hr)
-      (:div :class "messagebody" (markup:raw formatted-body))))))
+      (:div :class "messagebody"
+            :style (unless (has-unread-p tags) "display:none;")
+            (markup:raw formatted-body))))))
 
 (defun format-message-body (mail-file)
   "Stylize the contents of MAIL-FILE."

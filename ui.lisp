@@ -56,3 +56,21 @@
       nil))
 
   (update-elements))
+
+(define-parenscript nyxtmuch-toggle-collapse-message ()
+  "Hide the body of the selected message in the show buffer."
+  (defun ensure-scroll (element)
+    ;TODO why do i have to repeat this defun here?
+
+    ;NOTE that scroll-into-view-if-needed is webkit-specific:
+    ; https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
+    (ps:chain element (scroll-into-view-if-needed)))
+
+  (ps:let* ((message (nyxt/ps:qs document "li.message.selected")))
+    (when message
+      (let* ((bodydiv (nyxt/ps:qs message "div.messagebody")))
+        (if (ps:equal (ps:chain bodydiv style display) "none")
+            (setf (ps:chain bodydiv style display) nil)
+            (setf (ps:chain bodydiv style display) "none")))
+      (ensure-scroll message))
+    nil))

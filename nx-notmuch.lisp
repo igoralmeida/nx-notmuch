@@ -59,7 +59,7 @@
     (define-scheme "nm-show"
       scheme:vi-normal
       (list
-       "c" 'nyxtmuch-collapse-message
+       "c" 'nyxtmuch-toggle-collapse-message
        "C-j" 'nyxtmuch-focus-next-message
        "C-k" 'nyxtmuch-focus-prev-message
        "r" 'nyxtmuch-render-thread)))))
@@ -222,15 +222,3 @@
     (setf (slot-value thebuf 'thread-id) tid)
     (nyxtmuch-render-thread thebuf)
     (set-current-buffer thebuf)))
-
-;; (define-parenscript %collapse-message (message-element)
-;;   (defun qs (context selector)
-;;     "Alias of document.querySelector"
-;;     (ps:chain context (query-selector selector)))
-
-;;   (let ((bodydiv (qs (ps:lisp message-element) "div.messagebody")))
-;;     (setf (ps:chain bodydiv style display) "none")))
-
-;; (define-command nyxtmuch-collapse-message ()
-;;   "Collapses a message shown in a thread buffer"
-;;   (nyxt/web-mode:query-hints "Collapse which message?" '%collapse-message))
