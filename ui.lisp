@@ -15,15 +15,56 @@
 
 (in-package :nx-notmuch)
 
+;;; simple commands
+
+;; show
+
 (define-command nyxtmuch-focus-next-message ()
   "Focus next message in show buffer."
-  (focus-change 'next))
+  (focus-change 'next "li" "message"))
 
 (define-command nyxtmuch-focus-prev-message ()
   "Focus prev message in show buffer."
-  (focus-change 'prev))
+  (focus-change 'prev "li" "message"))
 
-(define-parenscript focus-change (direction)
+(define-command nyxtmuch-focus-first-message ()
+  "Focus first thread in show buffer."
+  (focus-change 'first "li" "message"))
+
+(define-command nyxtmuch-focus-last-message ()
+  "Focus last thread in show buffer."
+  (focus-change 'last "li" "message"))
+
+;; search
+
+(define-command nyxtmuch-focus-next-result ()
+  "Focus next thread in search buffer."
+  (focus-change 'next "li" "thread"))
+
+(define-command nyxtmuch-focus-prev-result ()
+  "Focus previous thread in search buffer."
+  (focus-change 'prev "li" "thread"))
+
+(define-command nyxtmuch-focus-first-result ()
+  "Focus first thread in search buffer."
+  (focus-change 'first "li" "thread"))
+
+(define-command nyxtmuch-focus-last-result ()
+  "Focus last thread in search buffer."
+  (focus-change 'last "li" "thread"))
+
+;;; utils
+
+;; A focus changer for both search and show buffers, works by adding/removing
+;; the `selected' class from elements of tag HTML-TAG and class HTML-TAG-CLASS
+;;
+;; DIRECTION is 'prev 'next 'first or 'last
+;; HTML-TAG is a string like "li" or "div"
+;; HTML-TAG-CLASS is the main class like "message" or "thread"
+;;
+;; Seems kind of expensive to enumerate all the candidates every time, but there
+;; you go. At least trees are easily traversed like this...
+(define-parenscript focus-change (direction html-tag html-tag-class)
   (defun clip (idx len)
     (max (min idx (1- len)) 0))
 
@@ -33,29 +74,41 @@
   (defun next-element (current-idx collection)
     (elt collection (clip (1+ current-idx) (length collection))))
 
+  (defun first-element (current-idx collection)
+    (elt collection 0))
+
+  (defun last-element (current-idx collection)
+    (elt collection (1- (length collection))))
+
   (defun ensure-scroll (element)
     ;NOTE that scroll-into-view-if-needed is webkit-specific:
     ; https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
     (ps:chain element (scroll-into-view-if-needed)))
 
   (defun update-elements ()
-    (ps:let* ((messages (nyxt/ps:qsa document "li.message"))
-              (old-element (nyxt/ps:qs document "li.message.selected"))
+    (ps:let* ((search-term (ps:lisp (str:join "." `(,html-tag ,html-tag-class))))
+              (marked-term (ps:lisp (str:join "." `(,html-tag ,html-tag-class "selected"))))
+              (candidates (nyxt/ps:qsa document search-term))
+              (old-element (nyxt/ps:qs document marked-term))
               (new-element nil)
               old-pos)
       (when old-element
-        (setf (ps:@ old-element class-name) "message")
-        (setf old-pos (ps:chain *array prototype index-of (call messages old-element)))
+        (setf (ps:@ old-element class-name) (ps:lisp html-tag-class))
+        (setf old-pos (ps:chain *array prototype index-of (call candidates old-element)))
         (setf new-element (ps:lisp (case direction
-                                     (prev '(prev-element old-pos messages))
-                                     (next '(next-element old-pos messages))))))
+                                     (prev '(prev-element old-pos candidates))
+                                     (next '(next-element old-pos candidates))
+                                     (first '(first-element old-pos candidates))
+                                     (last '(last-element old-pos candidates))))))
       (unless new-element
-        (setf new-element (elt messages 0)))
-      (setf (ps:@ new-element class-name) "message selected")
+        (setf new-element (elt candidates 0)))
+      (setf (ps:@ new-element class-name) (ps:lisp (str:concat html-tag-class " selected")))
       (ensure-scroll new-element)
       nil))
 
   (update-elements))
+
+;;; show commands
 
 (define-parenscript nyxtmuch-toggle-collapse-message ()
   "Hide the body of the selected message in the show buffer."

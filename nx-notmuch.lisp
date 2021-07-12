@@ -62,6 +62,8 @@
        "c" 'nyxtmuch-toggle-collapse-message
        "C-j" 'nyxtmuch-focus-next-message
        "C-k" 'nyxtmuch-focus-prev-message
+       "home" 'nyxtmuch-focus-first-message
+       "end" 'nyxtmuch-focus-last-message
        "r" 'nyxtmuch-render-thread)))))
 
 (define-mode nyxtmuch-search-mode ()
@@ -70,7 +72,11 @@
     (define-scheme "nm-search"
       scheme:vi-normal
       (list
-       "r" 'nyxtmuch-render-search)))))
+       "r" 'nyxtmuch-render-search
+       "j" 'nyxtmuch-focus-next-result
+       "k" 'nyxtmuch-focus-prev-result
+       "home" 'nyxtmuch-focus-first-result
+       "end" 'nyxtmuch-focus-last-result)))))
 
 (define-class show-buffer (user-internal-buffer)
   ((thread-id "" :type string :documentation "Notmuch thread id.")
@@ -117,12 +123,18 @@
    (style #.(cl-css:css
              '(("li.thread:hover"
                 :background-color "#eee")
-               ("li.message:hover"
-                :background-color "#eee")
+               ("li.thread"
+                :border-left "2px solid white")
+               ("li.thread.selected"
+                :border-left "2px solid blue"
+                :background-color "#fafaff")
                ("a.threadli"
                 :color "unset")
-               ("a.messageli"
-                :color "unset")
+               ("div.result.unread"
+                :font-weight "bold")
+               ("div.tags"
+                :margin "2px"
+                :display "inline-block")
                ("span.date"
                 :margin "2px"
                 :display "inline-block"
@@ -132,11 +144,6 @@
                 :display "inline-block"
                 :width "40em")
                ("span.subject"
-                :margin "2px"
-                :display "inline-block")
-               ("div.result.unread"
-                :font-weight "bold")
-               ("div.tags"
                 :margin "2px"
                 :display "inline-block")
                ("span.tag"
@@ -154,7 +161,11 @@
   "Build the nyxtmuch search associated with this buffer."
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
-         (search-string (search-string buffer)))
+         (search-string (search-string buffer))
+         ;;TODO not great to redo the search every refresh
+         (threads (notmuch-search
+                     search-string
+                     (slot-value *nyxtmuch* 'notmuch-args))))
     (with-current-buffer buffer
       (nyxt::html-set
        (str:concat
@@ -164,10 +175,8 @@
          (:h1 "Nyxtmuch")
          (:p search-string)
          (:hr))
-        (format-search-results
-         (notmuch-search
-          search-string
-          (slot-value *nyxtmuch* 'notmuch-args))))))))
+        (format-search-results threads)))
+      (nyxtmuch-focus-next-result))))
 
 (define-command-global nyxtmuch-search ()
   "Open nyxtmuch with some search."
@@ -211,7 +220,7 @@
          (notmuch-show-single-thread
           thread-id
           (slot-value *nyxtmuch* 'notmuch-args)))))
-      (focus-change 'next))))
+      (nyxtmuch-focus-next-message))))
 
 (define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch."

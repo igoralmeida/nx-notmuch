@@ -46,8 +46,9 @@
     (loop for thread in threads
           collect
           (markup:markup
-           (:a :class "threadli" :href (lisp-url `(nyxtmuch-show ,(getf thread :thread)))
-               (:li :class "thread" (markup:raw (format-search-result thread)))))))))
+           (:li :class "thread"
+                (:a :class "threadli" :href (lisp-url `(nyxtmuch-show ,(getf thread :thread)))
+                    (markup:raw (format-search-result thread)))))))))
 
 (defun format-search-result (thread)
   "Stylize THREAD as a search result."
