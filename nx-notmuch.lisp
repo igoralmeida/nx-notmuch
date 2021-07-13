@@ -73,6 +73,7 @@
       scheme:vi-normal
       (list
        "r" 'nyxtmuch-render-search
+       "return" 'nyxtmuch-show-result
        "j" 'nyxtmuch-focus-next-result
        "k" 'nyxtmuch-focus-prev-result
        "home" 'nyxtmuch-focus-first-result

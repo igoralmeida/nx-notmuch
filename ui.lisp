@@ -53,6 +53,16 @@
   "Focus last thread in search buffer."
   (focus-change 'last "li" "thread"))
 
+(define-command nyxtmuch-show-result ()
+  "From the search buffer, open a show buffer with the focused thread."
+  ;NOTE This should do essentially what nyxt's follow-hint does. Not sure if
+  ;there's a way to reuse that without recreating the hint object here.
+  (let ((cmd (get-thread-anchor-code (%get-thread-anchor-href))))
+    (when (and (eq (length cmd) 2)
+               (eq (first cmd) 'nyxtmuch-show)
+               (typep (second cmd) 'string))
+      (eval cmd))))
+
 ;;; utils
 
 ;; A focus changer for both search and show buffers, works by adding/removing
@@ -107,6 +117,22 @@
       nil))
 
   (update-elements))
+
+(defun get-thread-anchor-code (href)
+  "Return the lisp code in HREF, a string like 'lisp://(cmd args)'."
+  (let ((url-code (quri:url-decode (nyxt::schemeless-url (quri:uri href)))))
+    (with-input-from-string (input url-code)
+      (read input nil :eof))))
+
+(define-parenscript %get-thread-anchor-href ()
+  "Return the href (a lisp:// code) of the selected result in the search
+buffer."
+  (ps:let* ((thread (nyxt/ps:qs document "li.thread.selected"))
+            thread-link)
+    (when thread
+      (setf thread-link (nyxt/ps:qs thread "a.threadli"))
+      (when thread-link
+        (ps:@ thread-link href)))))
 
 ;;; show commands
 
