@@ -206,7 +206,10 @@
   "Build the nyxtmuch thread view associated with this buffer."
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
-         (thread-id (thread-id buffer)))
+         (thread-id (thread-id buffer))
+         (thread-info (notmuch-show-single-thread
+                       thread-id
+                       (slot-value *nyxtmuch* 'notmuch-args))))
     (with-current-buffer buffer
       (nyxt::html-set
        (str:concat
@@ -217,11 +220,11 @@
            (:h1 "Nyxtmuch")
            (:p (str:concat "thread:" thread-id))
            (:hr)))
-        (format-thread
-         (notmuch-show-single-thread
-          thread-id
-          (slot-value *nyxtmuch* 'notmuch-args)))))
-      (nyxtmuch-focus-next-message))))
+        (if thread-info
+            (format-thread thread-info)
+            (markup:markup (:p "Thread not found.")))))
+      (when thread-info
+        (nyxtmuch-focus-next-message)))))
 
 (define-command-global nyxtmuch-show (tid)
   "Show a thread in nyxtmuch."
