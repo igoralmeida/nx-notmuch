@@ -153,3 +153,21 @@ buffer."
             (setf (ps:chain bodydiv style display) "none")))
       (ensure-scroll message))
     nil))
+
+;;; search commands
+
+(define-command nyxtmuch-archive-focused ()
+  "Toggle the `inbox' tag of the currently selected thread in the search buffer.
+
+Refreshes the buffer afterwards, which is not ideal. TODO"
+  (let* ((thread-id (second (get-thread-anchor-code (%get-thread-anchor-href))))
+         (notmuch-args (slot-value *nyxtmuch* 'notmuch-args))
+         (tags (notmuch-get-tags thread-id notmuch-args)))
+    (when thread-id
+      (notmuch-tag-thread
+       thread-id
+       (list
+        (format nil "~:[+~;-~]inbox" (member "inbox" tags :test #'equal)))
+       notmuch-args)
+      (nyxtmuch-render-search))))
+

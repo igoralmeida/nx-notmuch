@@ -39,3 +39,27 @@ Hard-coded limit of 300 results."
      "--body=false"
      ,(str:concat "thread:\"" tid "\""))
    :output #'(lambda (s) (first (yason:parse s)))))
+
+(defun notmuch-get-tags (tid notmuch-args)
+  "Retrieve only thread tags, via `notmuch search thread:TID'.
+
+The reader will probably fail for crazy tag formats."
+  (uiop:run-program
+   `("notmuch"
+     ,@notmuch-args
+     "search"
+     "--format=sexp"
+     "--output=tags"
+     ,(str:concat "thread:\"" tid "\""))
+   :output :form))
+
+(defun notmuch-tag-thread (tid tag-change-list notmuch-args)
+  "Alter thread TID as specified by TAG-CHANGE-LIST, via `notmuch tag'.
+
+TAG-CHANGE-LIST elements should be strings with either +tagname or -tagname."
+  (uiop:run-program
+   `("notmuch"
+     ,@notmuch-args
+     "tag"
+     ,@tag-change-list
+     ,(str:concat "thread:\"" tid "\""))))

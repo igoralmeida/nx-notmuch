@@ -72,6 +72,7 @@
     (define-scheme "nm-search"
       scheme:vi-normal
       (list
+       "a" 'nyxtmuch-archive-focused
        "r" 'nyxtmuch-render-search
        "return" 'nyxtmuch-show-result
        "j" 'nyxtmuch-focus-next-result
