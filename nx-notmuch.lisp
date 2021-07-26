@@ -53,6 +53,13 @@
                             "--config="
                             (uiop:native-namestring "~/.notmuch-config")))))
 
+;; Try to load libnotmuch
+(handler-case
+    (cffi:load-foreign-library "libnotmuch.so")
+  (t (c)
+    ;TODO should do more than just warn here
+    (echo-warning "Could not load libnotmuch: ~a~%" c)))
+
 (define-mode nyxtmuch-show-mode ()
   "mode for nyxtmuch threads"
   ((keymap-scheme

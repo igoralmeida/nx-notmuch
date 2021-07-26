@@ -26,6 +26,7 @@
                (:file "utils")
                (:file "mime")
                (:file "html")
+               (:file "notmuch-ffi")
                (:file "notmuch-interface")
                (:file "ui")
                (:file "nx-notmuch")))
