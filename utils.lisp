@@ -46,3 +46,45 @@ This is a port of astroid's Utils::get_tag_color_rgba(). "
                  "#000000"
                  "#f2f2f2")))
     (cons fc (rgb:xmlify-rgb bc))))
+
+(defconstant MINUTE 60)
+(defconstant HOUR (* 60 MINUTE))
+(defconstant DAY (* 24 HOUR))
+
+(defun relative-date (unix-time unix-now)
+  "A nice representation of UNIX-TIME relative to UNIX-NOW.
+
+This is a port of notmuch-client's notmuch_time_relative_date()."
+  (let* ((now (local-time:unix-to-timestamp unix-now))
+         (then (local-time:unix-to-timestamp unix-time))
+         delta)
+    (if (local-time:timestamp> then now)
+        "the future"
+        (progn
+          (setq delta (local-time:timestamp-difference now then))
+          (cond
+            ((> delta (* 180 DAY))
+             (local-time:format-timestring nil then :format
+                                           '(:year "-" (:month 2) "-" (:day 2))))
+            ((< delta 3600)
+             (format nil "~d mins. ago" (truncate (/ delta 60))))
+            ((<= delta (* 7 DAY))
+             (let ((hour-min (local-time:format-timestring nil then :format
+                                                           '((:hour 2) ":" (:min 2)))))
+               (cond
+                 ((and (eq (local-time:timestamp-day-of-week then) (local-time:timestamp-day-of-week now))
+                       (< delta DAY))
+                  (format nil "Today ~a" hour-min))
+                 ((eq (mod (- (+ 7 (local-time:timestamp-day-of-week now)) (local-time:timestamp-day-of-week then))
+                           7)
+                      1)
+                  (format nil "Yest. ~a" hour-min))
+                 ((not (eq (local-time:timestamp-day-of-week then) (local-time:timestamp-day-of-week now)))
+                  (format nil "~a. ~a"
+                          (local-time:format-timestring nil then :format
+                                                        '(:short-weekday))
+                          hour-min)))))
+            (t
+             (format nil "~a" (local-time:format-timestring
+                               nil then :format
+                               '(:long-month " " (:day 2))))))))))

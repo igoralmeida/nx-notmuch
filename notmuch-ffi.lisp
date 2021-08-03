@@ -113,4 +113,63 @@
 (cffi:defcfun "notmuch_thread_get_thread_id" :string
   (thread :pointer))
 
+(cffi:defcfun "notmuch_thread_get_subject" :string
+  (thread :pointer))
+
+(cffi:defcfun "notmuch_thread_get_authors" :string
+  (thread :pointer))
+
+(cffi:defcfun "notmuch_thread_get_tags" :pointer
+  (thread :pointer))
+
+(cffi:defcfun "notmuch_thread_get_oldest_date" :long
+  (thread :pointer))
+
+(cffi:defcfun "notmuch_thread_get_newest_date" :long
+  (thread :pointer))
+
+;; commands and utils
+
+(defun libnotmuch-collect-tags (tags-handle)
+  "Given TAGS-HANDLE, collect all tags in a list."
+  (loop while (notmuch-tags-valid tags-handle)
+        collect (notmuch-tags-get tags-handle)
+        do (notmuch-tags-move-to-next tags-handle)))
+
+(defun libnotmuch-collect-threads (threads-handle)
+  "Given THREADS-HANDLE, collect all threads in a list."
+  (loop while (notmuch-threads-valid threads-handle)
+        collect (let ((thread (notmuch-threads-get threads-handle)))
+                  (list :thread (notmuch-thread-get-thread-id thread)
+                        :subject (notmuch-thread-get-subject thread)
+                        :authors (notmuch-thread-get-authors thread)
+                        :date_relative (relative-date
+                                        (notmuch-thread-get-newest-date thread)
+                                        (local-time:timestamp-to-unix (local-time:now)))
+                        :tags (libnotmuch-collect-tags (notmuch-thread-get-tags thread))))
+        do (notmuch-threads-move-to-next threads-handle)))
+
+(defun libnotmuch-search (search-string db-path)
+  "Search using the libnotmuch FFI.
+
+This is hard-coded to open the database at DB-PATH in read-only mode."
+  (let* (db-open-status db-handle
+         query-handle search-status
+         threads-handle thread-list)
+    (cffi:with-foreign-objects ((db-handle-pointer :pointer)
+                                (search-handle-pointer :pointer))
+      (setf db-open-status (notmuch-database-open db-path 0 db-handle-pointer))
+      (when (eq db-open-status 0)
+        (setf db-handle (cffi:mem-ref db-handle-pointer :pointer)
+              query-handle (notmuch-query-create db-handle search-string)
+              search-status (notmuch-query-search-threads
+                             query-handle search-handle-pointer))
+
+        (when (eq search-status 0)
+          (setf threads-handle (cffi:mem-ref search-handle-pointer :pointer)
+                thread-list (libnotmuch-collect-threads threads-handle))
+          (notmuch-query-destroy query-handle)
+          (unless (eq (notmuch-database-close db-handle) 0)
+            (echo-warning "db close not successful"))
+          thread-list)))))
 
