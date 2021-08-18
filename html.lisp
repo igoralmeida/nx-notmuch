@@ -131,7 +131,7 @@ Hard-coded to use the first file provided by notmuch."
 
       (let ((part-type (full-mime-type mime-part)))
         (cond
-          ((string-equal part-type "text/plain")
+         ((or (string-equal part-type "text/plain") (string-equal part-type "/"))
            (markup:markup
             (:div :style "white-space:pre" (get-mime-content mime-part))))
 
