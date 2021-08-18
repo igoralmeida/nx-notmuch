@@ -63,3 +63,13 @@ TAG-CHANGE-LIST elements should be strings with either +tagname or -tagname."
      "tag"
      ,@tag-change-list
      ,(str:concat "thread:\"" tid "\""))))
+
+(defun notmuch-config-get-database-path (notmuch-args)
+  "Ask notmuch where the database is, via `notmuch config'."
+  (uiop:run-program
+   `("notmuch"
+     ,@notmuch-args
+     "config"
+     "get"
+     "database.path")
+   :output '(:string :stripped t)))
