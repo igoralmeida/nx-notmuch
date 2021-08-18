@@ -171,21 +171,34 @@
   (let* ((buffer (or buffer (current-buffer)))
          (style (style buffer))
          (search-string (search-string buffer))
-         ;;TODO not great to redo the search every refresh
-         (threads (notmuch-search
-                     search-string
-                     (slot-value *nyxtmuch* 'notmuch-args))))
-    (with-current-buffer buffer
-      (nyxt::html-set
-       (str:concat
-        (markup:markup
-         (:style (slot-value (nyxt::make-dummy-buffer) 'style))
-         (:style style)
-         (:h1 "Nyxtmuch")
-         (:p search-string)
-         (:hr))
-        (format-search-results threads)))
-      (nyxtmuch-focus-next-result))))
+         (db-path (notmuch-config-get-database-path (slot-value *nyxtmuch* 'notmuch-args)))
+         (search-objs (libnotmuch-lazy-search-begin search-string db-path))
+         (threads-handle (first search-objs)))
+      (if (not threads-handle)
+          (echo-warning "Something went wrong with the lazy search.")
+          (progn
+           (with-current-buffer buffer
+               (nyxt::html-set
+                (str:concat
+                 (markup:markup
+                  (:style (slot-value (nyxt::make-dummy-buffer) 'style))
+                  (:style style)
+                  (:h1 "Nyxtmuch")
+                  (:p search-string)
+                  (:hr))
+                 (format-search-results nil) ;silly way to get the container for search results?
+                 ))
+             (libnotmuch-threads-for-each
+              #'(lambda (thread)
+                  (let ((thread-str (format-search-result thread)))
+                      ;NOTE looks like with-current-buffer is needed here to
+                      ;ensure search results are added to the right pĺace --
+                      ;user might move to other buffers during rendering.
+                      (with-current-buffer buffer
+                          (%inject-thread-result thread-str))))
+              threads-handle)
+             (nyxtmuch-focus-next-result))
+           (libnotmuch-lazy-search-end search-objs)))))
 
 (define-command-global nyxtmuch-search ()
   "Open nyxtmuch with some search."

@@ -134,6 +134,16 @@ buffer."
       (when thread-link
         (ps:@ thread-link href)))))
 
+(define-parenscript %inject-thread-result (thread-html-str)
+  "Inject THREAD-HTML-STR as another child of the thread list."
+  (ps:let ((thread-list (nyxt/ps:qs document "#threadlist"))
+            new-thread)
+    (when thread-list
+      (setf new-thread (ps:chain document (create-element nil)))
+      (ps:chain thread-list (append-child new-thread))
+      (setf (ps:@ new-thread outer-h-t-m-l) (ps:lisp thread-html-str))
+      nil)))
+
 ;;; show commands
 
 (define-parenscript nyxtmuch-toggle-collapse-message ()
