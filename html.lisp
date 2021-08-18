@@ -42,25 +42,24 @@
 (defun format-search-results (threads)
   "List and style the provided THREADS, with clickable lines."
   (markup:markup
-   (:ul
+   (:ul :id "threadlist"
     (loop for thread in threads
           collect
-          (markup:markup
-           (:li :class "thread"
-                (:a :class "threadli" :href (lisp-url `(nyxtmuch-show ,(getf thread :thread)))
-                    (markup:raw (format-search-result thread)))))))))
+          (format-search-result thread)))))
 
 (defun format-search-result (thread)
   "Stylize THREAD as a search result."
   (markup:markup
-   (:div
-    :class (str:concat "result"
-                       (when (has-unread-p (getf thread :tags))
-                         " unread"))
-    (:span :class "date" (getf thread :date_relative))
-    (:span :class "authors" (getf thread :authors))
-    (markup:raw (format-tags (getf thread :tags)))
-    (:span :class "subject" (getf thread :subject)))))
+   (:li :class "thread"
+        (:a :class "threadli" :href (lisp-url `(nyxtmuch-show ,(getf thread :thread)))
+            (:div
+             :class (str:concat "result"
+                                (when (has-unread-p (getf thread :tags))
+                                    " unread"))
+             (:span :class "date" (getf thread :date_relative))
+             (:span :class "authors" (getf thread :authors))
+             (markup:raw (format-tags (getf thread :tags)))
+             (:span :class "subject" (getf thread :subject)))))))
 
 (defun has-unread-p (tags)
   "True if TAGS list has an `unread' tag."
