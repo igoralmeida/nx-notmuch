@@ -173,3 +173,65 @@ This is hard-coded to open the database at DB-PATH in read-only mode."
             (echo-warning "db close not successful"))
           thread-list)))))
 
+(defun libnotmuch-lazy-search-begin (search-string db-path)
+  "Set up a search using the libnotmuch FFI, returning its pointers.
+
+The follow-up to this call would be using `libnotmuch-threads-for-each' with the
+first element of the returned list.
+
+When the search is no longer necessary, call `libnotmuch-lazy-search-end' to
+tear everything down (and close the database)."
+  (let* (db-open-status db-handle
+         query-handle search-status
+         threads-handle
+         db-handle-pointer search-handle-pointer)
+
+    (setf db-handle-pointer (cffi:foreign-alloc :pointer))
+    (setf search-handle-pointer (cffi:foreign-alloc :pointer))
+
+    (setf db-open-status (notmuch-database-open db-path 0 db-handle-pointer))
+    (when (eq db-open-status 0)
+      (setf db-handle (cffi:mem-ref db-handle-pointer :pointer)
+            query-handle (notmuch-query-create db-handle search-string)
+            search-status (notmuch-query-search-threads
+                           query-handle search-handle-pointer))
+
+      (when (eq search-status 0)
+        (setf threads-handle (cffi:mem-ref search-handle-pointer :pointer))))
+
+    (list threads-handle
+          db-handle-pointer
+          search-handle-pointer
+          query-handle)))
+
+(defun libnotmuch-lazy-search-end (objs)
+  "Finalize search using the OBJS returned by `libnotmuch-lazy-search-begin'."
+  (destructuring-bind (db-handle-pointer
+                       search-handle-pointer
+                       query-handle)
+      (rest objs)
+
+    (let ((db-handle (cffi:mem-ref db-handle-pointer :pointer)))
+      (notmuch-query-destroy query-handle)
+      (unless (eq (notmuch-database-close db-handle) 0)
+        (echo-warning "db close not successful")))
+
+    (cffi:foreign-free search-handle-pointer)
+    (cffi:foreign-free db-handle-pointer)))
+
+(defun thread-to-plist (thread-handle)
+  "Fetch information from THREAD-HANDLE using libnotmuch."
+  (list :thread (notmuch-thread-get-thread-id thread-handle)
+        :subject (notmuch-thread-get-subject thread-handle)
+        :authors (notmuch-thread-get-authors thread-handle)
+        :date_relative (relative-date
+                        (notmuch-thread-get-newest-date thread-handle)
+                        (local-time:timestamp-to-unix (local-time:now)))
+        :tags (libnotmuch-collect-tags (notmuch-thread-get-tags thread-handle))))
+
+(defun libnotmuch-threads-for-each (f threads-handle)
+  "Call function F on each of the threads accessible with THREADS-HANDLE."
+  (loop while (notmuch-threads-valid threads-handle)
+        do (let ((thread (notmuch-threads-get threads-handle)))
+               (funcall f (thread-to-plist thread)))))
+
