@@ -67,6 +67,7 @@
       scheme:vi-normal
       (list
        "c" 'nyxtmuch-toggle-collapse-message
+       "C" 'nyxtmuch-toggle-collapse-all
        "C-j" 'nyxtmuch-focus-next-message
        "C-k" 'nyxtmuch-focus-prev-message
        "home" 'nyxtmuch-focus-first-message

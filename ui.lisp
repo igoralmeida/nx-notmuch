@@ -146,8 +146,19 @@ buffer."
 
 ;;; show commands
 
-(define-parenscript nyxtmuch-toggle-collapse-message ()
-  "Hide the body of the selected message in the show buffer."
+(define-command nyxtmuch-toggle-collapse-message ()
+  "(Un)collapse currently selected message in show buffer."
+  (collapse-change :current))
+
+(define-command nyxtmuch-toggle-collapse-all ()
+  "(Un)collapse all messages in show buffer.
+
+Collapses all if currently selected message is open, and uncollapses all otherwise."
+  (collapse-change :all))
+
+(define-parenscript collapse-change (choice)
+    "(Un)collapse messages in show buffer, given CHOICE (`:all' or `:current')."
+
   (defun ensure-scroll (element)
     ;TODO why do i have to repeat this defun here?
 
@@ -155,14 +166,36 @@ buffer."
     ; https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
     (ps:chain element (scroll-into-view-if-needed)))
 
-  (ps:let* ((message (nyxt/ps:qs document "li.message.selected")))
-    (when message
-      (let* ((bodydiv (nyxt/ps:qs message "div.messagebody")))
-        (if (ps:equal (ps:chain bodydiv style display) "none")
+  (defun message-body (message)
+    (nyxt/ps:qs message "div.messagebody"))
+
+  (defun body-visible-p (message)
+    (let* ((bodydiv (message-body message)))
+        (not (ps:equal (ps:chain bodydiv style display) "none"))))
+
+  (defun toggle-collapse-message (message &optional (want-visible :no-override))
+    ; WANT-VISIBLE (t or nil) overrides the 'toggling' behavior.
+    (let* ((bodydiv (message-body message)))
+        (when (eq want-visible :no-override)
+            (setf want-visible (not (body-visible-p message))))
+        (if want-visible
             (setf (ps:chain bodydiv style display) nil)
-            (setf (ps:chain bodydiv style display) "none")))
-      (ensure-scroll message))
-    nil))
+            (setf (ps:chain bodydiv style display) "none"))))
+
+  (ps:let* ((current-message (nyxt/ps:qs document "li.message.selected")))
+      (ps:case (ps:lisp choice)
+        (:current
+         (when current-message
+           (toggle-collapse-message current-message)
+           (ensure-scroll current-message)))
+
+        (:all
+         (ps:let* ((messages (nyxt/ps:qsa document "li.message"))
+                   (reference-message (or current-message (nyxt/ps:qs document "li.message")))
+                   (is-ref-visible (body-visible-p reference-message)))
+             (ps:dolist (message messages)
+                 (toggle-collapse-message message (not is-ref-visible)))))))
+  nil)
 
 ;;; search commands
 
