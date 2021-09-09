@@ -66,12 +66,17 @@
     (define-scheme "nm-show"
       scheme:vi-normal
       (list
-       "c" 'nyxtmuch-toggle-collapse-message
-       "C" 'nyxtmuch-toggle-collapse-all
-       "C-j" 'nyxtmuch-focus-next-message
-       "C-k" 'nyxtmuch-focus-prev-message
+       ;navigation
        "home" 'nyxtmuch-focus-first-message
        "end" 'nyxtmuch-focus-last-message
+       "C-j" 'nyxtmuch-focus-next-message
+       "C-k" 'nyxtmuch-focus-prev-message
+
+       ;actions
+       "C" 'nyxtmuch-toggle-collapse-all
+       "c" 'nyxtmuch-toggle-collapse-message
+
+       ;screen
        "r" 'nyxtmuch-render-thread)))))
 
 (define-mode nyxtmuch-search-mode ()
@@ -80,13 +85,18 @@
     (define-scheme "nm-search"
       scheme:vi-normal
       (list
-       "a" 'nyxtmuch-archive-focused
-       "r" 'nyxtmuch-render-search
-       "return" 'nyxtmuch-show-result
+       ;navigation
+       "home" 'nyxtmuch-focus-first-result
+       "end" 'nyxtmuch-focus-last-result
        "j" 'nyxtmuch-focus-next-result
        "k" 'nyxtmuch-focus-prev-result
-       "home" 'nyxtmuch-focus-first-result
-       "end" 'nyxtmuch-focus-last-result)))))
+
+       ;actions
+       "return" 'nyxtmuch-show-result
+       "a" 'nyxtmuch-archive-focused
+
+       ;screen
+       "r" 'nyxtmuch-render-search)))))
 
 (define-class show-buffer (user-internal-buffer)
   ((thread-id "" :type string :documentation "Notmuch thread id.")
