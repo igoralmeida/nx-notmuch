@@ -19,20 +19,63 @@
 (defvar *nyxtmuch* nil
   "Global nyxtmuch config")
 
-(define-class search-source (prompter:source)
-  ((prompter:name "Nyxtmuch search history")
-   (prompter:constructor (lambda (s)
-                           (declare (ignore s))
-                           (containers:container->list (slot-value *nyxtmuch* 'search-history))))
-   ;;TODO still doesn't select the history item if current input matches
-   (prompter:filter-preprocessor (lambda (suggestions source input)
-                                   (declare (ignore suggestions))
-                                   (append
-                                    (list (funcall (prompter:suggestion-maker source) input
-                                                   source input))
-                                    (containers:container->list (slot-value *nyxtmuch* 'search-history)))))
+(define-command nyxtmuch-search-prompt-update (&optional (prompt-buffer (current-prompt-buffer)))
+  "Update the search prompt, considering the selected suggestion.
+
+When cursor is at \"tag:\", assume user is trying to select from one of the tags
+fetched from the database. Otherwise, replace input with the selected suggestion
+entirely."
+  (let* ((suggestion (prompter:selected-suggestion prompt-buffer))
+         (suggestion-text (prompter:attributes-default suggestion))
+         (input (prompter:input prompt-buffer))
+         (input-words (str:words input))
+         (last-word (car (last input-words))))
+      (nyxt::set-prompt-buffer-input
+       (cond
+        ((string-equal input suggestion-text)
+         input)
+        ((str:starts-with? "tag:" last-word)
+         (str:unwords (append (butlast input-words) (list suggestion-text))))
+        (t
+         suggestion-text)))))
+
+(define-class search-tag-source (prompter:source)
+  ((prompter:name "Nyxtmuch search (supports tag search)")
+   (prompter:filter-preprocessor (lambda (initial-suggestions-copy source input)
+                                   (cond
+                                    ((str:starts-with? "tag:" (car (last (str:words input))))
+                                        ;"tag search" mode, use only the initial suggestions
+                                     (prompter:delete-inexact-matches
+                                      initial-suggestions-copy
+                                      source
+                                      (car (last (str:words input)))))
+                                    (t
+                                        ;otherwise, show suggestions from history
+                                     (mapcar #'prompter:make-suggestion
+                                             (containers:container->list
+                                              ;TODO can't I get it from the prompter instead?
+                                              (slot-value *nyxtmuch* 'search-history)))))))
+
    (prompter:filter (lambda (suggestion source input)
-                      (prompter:submatches suggestion source input)))))
+                        ;submatch against last word or full input, depending on cursor
+                      (let ((last-word (car (last (str:words input)))))
+                          (prompter:submatches
+                           suggestion
+                           source
+                           (if (str:starts-with? "tag:" last-word)
+                               last-word
+                               input)))))
+
+   (prompter:filter-postprocessor (lambda (suggestions source input)
+                                    (declare (ignore source))
+                                        ;input always first
+                                    (append (list input) suggestions)))
+   (prompter:constructor
+    (lambda (s)
+      (declare (ignore s))
+      (let ((db-path (notmuch-config-get-database-path (slot-value *nyxtmuch* 'notmuch-args))))
+          (mapcar #'(lambda (tag) (prompter:make-suggestion (str:concat "tag:" tag)))
+                  (libnotmuch-get-all-tags db-path)))))))
 
 (define-class config ()
   ((notmuch-args nil
@@ -59,6 +102,14 @@
   (t (c)
     ;TODO should do more than just warn here
     (echo-warning "Could not load libnotmuch: ~a~%" c)))
+
+(define-mode nyxtmuch-search-prompt-mode ()
+  "mode for nyxtmuch search prompt"
+  ((keymap-scheme
+    (define-scheme "nm-search-prompt"
+      scheme:vi-insert
+      (list
+       "tab" 'nyxtmuch-search-prompt-update)))))
 
 (define-mode nyxtmuch-show-mode ()
   "mode for nyxtmuch threads"
@@ -94,6 +145,8 @@
        ;actions
        "return" 'nyxtmuch-show-result
        "a" 'nyxtmuch-archive-focused
+       "L" 'nyxtmuch-search-tag
+       "O" 'nyxtmuch-clone-search
 
        ;screen
        "r" 'nyxtmuch-render-search)))))
@@ -211,17 +264,23 @@
              (nyxtmuch-focus-next-result))
            (libnotmuch-lazy-search-end search-objs)))))
 
-(define-command-global nyxtmuch-search ()
-  "Open nyxtmuch with some search."
-  (let* ((search-hist (slot-value *nyxtmuch* 'search-history))
-         (search-result
-           (nyxt:prompt
-            :prompt "Notmuch search:"
-            :history search-hist
-            :sources 'search-source))
-         (search-term (if (listp search-result)
-                          (first search-result)
-                          search-result))
+(define-command nyxtmuch-clone-search (&optional (buffer (current-buffer)))
+  "Prepare a search copying BUFFER's search terms."
+  (nyxtmuch-search (slot-value buffer 'search-string)))
+
+(define-command-global nyxtmuch-search-tag ()
+  "Prepare a search starting with \"tag:\"."
+  (nyxtmuch-search "tag:"))
+
+(define-command-global nyxtmuch-search (&optional input)
+  "Open nyxtmuch, possibly with preexisting search INPUT."
+  (let* ((search-term
+          (first (nyxt:prompt
+                  :prompt "Notmuch search:"
+                  :history (slot-value *nyxtmuch* 'search-history)
+                  :input (or input "")
+                  :sources 'search-tag-source
+                  :extra-modes '(nyxtmuch-search-prompt-mode))))
          buffer-name thebuf)
     (if (str:emptyp search-term)
         (echo "Notmuch search cannot be empty.")
