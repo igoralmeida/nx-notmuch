@@ -235,3 +235,20 @@ tear everything down (and close the database)."
         do (let ((thread (notmuch-threads-get threads-handle)))
                (funcall f (thread-to-plist thread)))))
 
+(defun libnotmuch-get-all-tags (db-path)
+  "Get all tags in the database at DB-PATH using the libnotmuch FFI."
+  (let* (db-open-status db-handle tags-handle tags)
+    (cffi:with-foreign-objects ((db-handle-pointer :pointer))
+      (setf db-open-status (notmuch-database-open db-path 0 db-handle-pointer))
+      (when (eq db-open-status 0)
+        (setf db-handle (cffi:mem-ref db-handle-pointer :pointer))
+        (setf tags-handle (notmuch-database-get-all-tags db-handle))
+        (setf tags (loop while (notmuch-tags-valid tags-handle)
+                         collect (notmuch-tags-get tags-handle)
+                         do (notmuch-tags-move-to-next tags-handle)))
+        (notmuch-tags-destroy tags-handle)
+
+        (unless (eq (notmuch-database-close db-handle) 0)
+            (echo-warning "db close not successful"))
+        tags))))
+
